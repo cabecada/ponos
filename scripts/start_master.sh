@@ -29,4 +29,4 @@ sudo apt-get -y install git
 # install mesos python bindings
 EGG=mesos-0.20.0-py2.7-linux-x86_64.egg
 wget http://downloads.mesosphere.io/master/ubuntu/14.04/$EGG
-# sudo pip install $EGG
+sudo easy_install install $EGG  # pip doesn't do eggs
