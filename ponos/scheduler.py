@@ -54,6 +54,9 @@ class PonosScheduler(mesos.interface.Scheduler):
             logging.info("Launching task {task} "
                          "using offer {offer}.".format(task=task.task_id.value,
                                                        offer=offer.id))
+            # this looks goofy but it doesn't work unless python has a
+            # reference to the list of tasks, I believe this is some
+            # sort of GC problem
             tasks = [task]
             driver.launchTasks(offer.id, tasks)
 
@@ -61,7 +64,7 @@ if __name__ == '__main__':
     # make us a framework
     framework = mesos_pb2.FrameworkInfo()
     framework.user = ""  # Have Mesos fill in the current user.
-    framework.name = "Test Framework (Python)"
+    framework.name = "python-test"
     driver = mesos.native.MesosSchedulerDriver(
         PonosScheduler(),
         framework,
