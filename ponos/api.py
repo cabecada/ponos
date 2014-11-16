@@ -1,12 +1,10 @@
 import sys
 import os
 import uuid
+import json
 from functools import wraps
 
-import logging
-logging.basicConfig()
-
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 from kazoo.client import KazooClient
 
@@ -18,9 +16,9 @@ class UserError(Exception):
     pass
 
 
-def conforms(spec, dict):
-    for key in spec:
-        if key not in dict or type(dict[key]) != spec[key]:
+def conforms(spec, data):
+    for key in spec.keys():
+        if key not in data.keys() or not isinstance(data[key], spec[key]):
             return False
     return True
 
@@ -41,13 +39,21 @@ def validate(spec):
                         data=data,
                         spec=spec))
             else:
-                f(*args, **kwargs)
+                return f(*args, **kwargs)
         return wrapper
     return validator
 
 
+@api.route("/job/<id>", methods=["DELETE"])
+def delete_job(id):
+    """Delete the job with the given id."""
+    zk = api.config["ZOOKEEPER"]
+    jobpath = "/".join([api.config["ZK_PATH"], "jobs", id])
+    zk.delete(jobpath)
+    return jsonify({"result": "success", "jobid": id})
+
 @api.route("/job", methods=["POST"])
-@validate({"name": str, "resources": dict, "cmd": str, "deps": []})
+@validate({"name": basestring, "resources": dict, "cmd": basestring, "deps": list})
 def add_job():
     """
     Add a new job to the system. Body should be json of the form:
@@ -62,7 +68,10 @@ def add_job():
     jid = str(uuid.uuid4())
     zk = api.config["ZOOKEEPER"]
     api.logger.info("Writing job {id} to zookeeper.".format(id=jid))
-    zk.create("/".join(api.config["ZK_PATH"], jid), data)
+    jobpath = "/".join([api.config["ZK_PATH"], "jobs", jid])
+    zk.ensure_path(jobpath)
+    zk.set(jobpath, json.dumps(data))
+    return jsonify({"result": "success", "jobid": jid})
 
 if __name__ == '__main__':
     assert os.environ["PONOS_ZK"]
